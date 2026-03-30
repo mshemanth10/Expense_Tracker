@@ -1,0 +1,223 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+
+<!-- PAGE HEADER -->
+<div class="row align-items-center mb-4">
+
+    <div class="col-md-6">
+        <h2 class="fw-bold mb-1">Dashboard</h2>
+        <p class="text-muted mb-0">
+            Monitor and manage your expenses efficiently.
+        </p>
+    </div>
+
+    <div class="col-md-6 text-md-end mt-3 mt-md-0">
+        <button onclick="toggleTheme()"
+                class="btn btn-outline-secondary"
+                id="themeBtn">
+            🌙
+        </button>
+    </div>
+
+</div>
+
+<!-- SUMMARY CARD -->
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-body">
+        <h6 class="text-muted">Total Expense</h6>
+        <h3 class="fw-bold text-primary">₹ {{ total }}</h3>
+    </div>
+</div>
+
+<!-- BUDGET WARNING -->
+{% if is_exceeded %}
+<div class="alert alert-danger shadow-sm mb-4">
+    ⚠ You have exceeded your monthly budget of ₹ {{ monthly_budget }}
+</div>
+{% endif %}
+
+<!-- SEARCH + FILTER -->
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-body">
+
+        <form method="GET" class="row g-3">
+
+            <div class="col-md-5">
+                <input type="text"
+                       name="q"
+                       class="form-control"
+                       placeholder="🔍 Search by title or category">
+            </div>
+
+            <div class="col-md-4">
+                <select name="month" class="form-select">
+                    <option value="">📅 Filter by Month</option>
+                    <option value="1">January</option>
+                    <option value="2">February</option>
+                    <option value="3">March</option>
+                    <option value="4">April</option>
+                    <option value="5">May</option>
+                    <option value="6">June</option>
+                    <option value="7">July</option>
+                    <option value="8">August</option>
+                    <option value="9">September</option>
+                    <option value="10">October</option>
+                    <option value="11">November</option>
+                    <option value="12">December</option>
+                </select>
+            </div>
+
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-dark w-100">
+                    Apply Filters
+                </button>
+            </div>
+
+        </form>
+
+    </div>
+</div>
+
+<!-- EXPENSE TABLE -->
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-body">
+
+        <h5 class="mb-3">Expense History</h5>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+
+                <thead class="table-dark">
+                    <tr>
+                        <th>Title</th>
+                        <th>Amount</th>
+                        <th>Category</th>
+                        <th>Date</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for expense in expenses %}
+                    <tr>
+                        <td>{{ expense.title }}</td>
+                        <td class="fw-semibold text-primary">
+                            ₹ {{ expense.amount }}
+                        </td>
+                        <td>
+                            <span class="badge bg-secondary">
+                                {{ expense.category }}
+                            </span>
+                        </td>
+                        <td>{{ expense.date }}</td>
+                        <td class="text-end">
+                            <a href="/edit/{{ expense.id }}/"
+                               class="btn btn-sm btn-warning me-1">
+                                Edit
+                            </a>
+                            <a href="/delete/{{ expense.id }}/"
+                               class="btn btn-sm btn-danger">
+                                Delete
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+
+            </table>
+        </div>
+
+        {% if not expenses %}
+            <p class="text-center text-muted mt-3">
+                No expenses found.
+            </p>
+        {% endif %}
+
+    </div>
+</div>
+
+<!-- CHARTS -->
+<div class="row">
+
+    <div class="col-md-6 mb-4">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-body">
+                <h5>Category-wise Spending</h5>
+                <canvas id="pieChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 mb-4">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-body">
+                <h5>Monthly Spending</h5>
+                <canvas id="barChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    const categoryData = {
+        labels: [{% for key in categories.keys %}"{{ key }}",{% endfor %}],
+        datasets: [{
+            data: [{% for value in categories.values %}{{ value }},{% endfor %}],
+        }]
+    };
+
+    new Chart(document.getElementById('pieChart'), {
+        type: 'pie',
+        data: categoryData
+    });
+
+    const monthlyLabels = {{ monthly_labels|safe }};
+    const monthlyValues = {{ monthly_values|safe }};
+
+    new Chart(document.getElementById('barChart'), {
+        type: 'bar',
+        data: {
+            labels: monthlyLabels,
+            datasets: [{
+                label: 'Monthly Expense',
+                data: monthlyValues,
+            }]
+        }
+    });
+
+    function toggleTheme() {
+        const body = document.getElementById("body");
+        const btn = document.getElementById("themeBtn");
+
+        body.classList.toggle("bg-dark");
+        body.classList.toggle("text-light");
+
+        if (body.classList.contains("bg-dark")) {
+            btn.innerHTML = "☀️";
+            localStorage.setItem("theme", "dark");
+        } else {
+            btn.innerHTML = "🌙";
+            localStorage.setItem("theme", "light");
+        }
+    }
+
+    window.onload = function() {
+        const savedTheme = localStorage.getItem("theme");
+        const body = document.getElementById("body");
+        const btn = document.getElementById("themeBtn");
+
+        if (savedTheme === "dark") {
+            body.classList.add("bg-dark", "text-light");
+            btn.innerHTML = "☀️";
+        }
+    };
+</script>
+
+{% endblock %}
